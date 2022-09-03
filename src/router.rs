@@ -1,4 +1,11 @@
-use axum::{debug_handler, Extension};
+use axum::{debug_handler, extract::Json, extract::Path, Extension};
+use log::info;
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+pub struct Payload {
+    url: String,
+}
 
 #[debug_handler]
 pub async fn health() -> String {
@@ -6,9 +13,24 @@ pub async fn health() -> String {
 }
 
 #[debug_handler]
-pub async fn shorten(body: String, Extension(db): Extension<sled::Db>) -> String {
+pub async fn shorten(Json(payload): Json<Payload>, Extension(db): Extension<sled::Db>) -> String {
+    info!("{:?}", payload);
     let uuid = nanoid::nanoid!(8);
-    db.insert(uuid.as_bytes(), body.as_bytes()).unwrap();
-    assert_eq!(&db.get(uuid.as_bytes()).unwrap().unwrap(), body.as_bytes());
+    let url_as_bytes = payload.url.as_bytes();
+    db.insert(&uuid, url_as_bytes).unwrap();
+    info!("key: {}, value: {:?}", uuid, url_as_bytes);
+    assert_eq!(&db.get(uuid.as_bytes()).unwrap().unwrap(), url_as_bytes);
     uuid
+}
+
+#[debug_handler]
+pub async fn redirect(Path(id): Path<String>, Extension(db): Extension<sled::Db>) -> String {
+    match &db.get(&id).unwrap() {
+        Some(url) => {
+            let url = String::from_utf8(url.to_vec()).unwrap();
+            info!("URL found: {:#?}", url);
+            url
+        }
+        None => "Error: Not found.".to_string(),
+    }
 }

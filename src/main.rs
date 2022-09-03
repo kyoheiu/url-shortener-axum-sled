@@ -18,6 +18,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(health))
         .route("/shorten", post(shorten))
+        .route("/redirect/:id", get(redirect))
         .layer(Extension(db));
 
     axum::Server::bind(&"0.0.0.0:8080".parse().unwrap())
