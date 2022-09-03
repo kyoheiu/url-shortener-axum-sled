@@ -15,7 +15,10 @@ pub async fn health() -> String {
 #[debug_handler]
 pub async fn shorten(Json(payload): Json<Payload>, Extension(db): Extension<sled::Db>) -> String {
     info!("{:?}", payload);
-    let uuid = nanoid::nanoid!(8);
+    let mut uuid = nanoid::nanoid!(8);
+    while db.contains_key(&uuid).unwrap() {
+        uuid = nanoid::nanoid!(8);
+    }
     let url_as_bytes = payload.url.as_bytes();
     db.insert(&uuid, url_as_bytes).unwrap();
     info!("key: {}, value: {:?}", uuid, url_as_bytes);
