@@ -1,4 +1,4 @@
-use axum::{debug_handler, extract::Json, extract::Path, Extension};
+use axum::{debug_handler, extract::Json, extract::Path, response::Redirect, Extension};
 use log::info;
 use serde::Deserialize;
 
@@ -24,13 +24,16 @@ pub async fn shorten(Json(payload): Json<Payload>, Extension(db): Extension<sled
 }
 
 #[debug_handler]
-pub async fn redirect(Path(id): Path<String>, Extension(db): Extension<sled::Db>) -> String {
+pub async fn redirect(Path(id): Path<String>, Extension(db): Extension<sled::Db>) -> Redirect {
     match &db.get(&id).unwrap() {
         Some(url) => {
             let url = String::from_utf8(url.to_vec()).unwrap();
             info!("URL found: {:#?}", url);
-            url
+            Redirect::to(&url)
         }
-        None => "Error: Not found.".to_string(),
+        None => {
+            info!("URL not found.");
+            Redirect::to("/")
+        }
     }
 }
